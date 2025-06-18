@@ -1,0 +1,11 @@
+{
+  "domain": "enovates",
+  "name": "Enovates",
+  "codeowners": ["@maju101"],
+  "config_flow": false,
+  "documentation": "https://www.home-assistant.io/integrations/enocean",
+  "iot_class": "local_polling",
+  "loggers": ["enovates"],
+  "quality_scale": "bronze",
+  "requirements": []
+}
