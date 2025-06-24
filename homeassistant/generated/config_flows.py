@@ -175,6 +175,7 @@ FLOWS = {
         "energyzero",
         "enigma2",
         "enocean",
+        "enovatess",
         "enphase_envoy",
         "environment_canada",
         "epic_games_store",

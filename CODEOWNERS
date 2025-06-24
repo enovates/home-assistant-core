@@ -432,6 +432,9 @@ build.json @home-assistant/supervisor
 /tests/components/enigma2/ @autinerd
 /homeassistant/components/enocean/ @bdurrer
 /tests/components/enocean/ @bdurrer
+/homeassistant/components/enovates/ @maju101
+/homeassistant/components/enovatess/ @maju101
+/tests/components/enovatess/ @maju101
 /homeassistant/components/enphase_envoy/ @bdraco @cgarwood @joostlek @catsmanac
 /tests/components/enphase_envoy/ @bdraco @cgarwood @joostlek @catsmanac
 /homeassistant/components/entur_public_transport/ @hfurubotten

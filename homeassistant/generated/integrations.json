@@ -1732,6 +1732,18 @@
       "iot_class": "local_push",
       "single_config_entry": true
     },
+    "enovates": {
+      "name": "Enovates",
+      "integration_type": "hub",
+      "config_flow": false,
+      "iot_class": "local_polling"
+    },
+    "enovatess": {
+      "name": "enovatess",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "local_polling"
+    },
     "enphase_envoy": {
       "name": "Enphase Envoy",
       "integration_type": "hub",
