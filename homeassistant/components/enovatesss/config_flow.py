@@ -1,4 +1,4 @@
-"""Config flow for the enovatess integration."""
+"""Config flow for the enovatesss integration."""
 
 from __future__ import annotations
 
@@ -8,41 +8,37 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
-from homeassistant.const import CONF_HOST
+from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN, LOGGER
-from .modbusenoone import ModbusEnoOne
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
 # TODO adjust the data schema to the data that you need
-STEP_USER_DATA_SCHEMA = vol.Schema({vol.Required(CONF_HOST): str})
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_HOST): str,
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+    }
+)
 
 
-# class PlaceholderHub:
-#     """Placeholder class to make tests pass.
+class PlaceholderHub:
+    """Placeholder class to make tests pass.
 
-#     TODO Remove this placeholder class and replace with things from your PyPI package.
-#     """
+    TODO Remove this placeholder class and replace with things from your PyPI package.
+    """
 
-#     def __init__(self, host: str) -> None:
-#         """Initialize."""
-#         self.host = host
+    def __init__(self, host: str) -> None:
+        """Initialize."""
+        self.host = host
 
-#     async def authenticate(self, username: str, password: str) -> bool:
-#         """Test if we can authenticate with the host."""
-#         return True
-
-
-def create_api(hostname) -> ModbusEnoOne | None:
-    LOGGER.warning("Creating Enovates Modbus API to: " + hostname)
-
-    try:
-        return ModbusEnoOne(hostname)
-    except:
-        return None
+    async def authenticate(self, username: str, password: str) -> bool:
+        """Test if we can authenticate with the host."""
+        return True
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -58,18 +54,22 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     #     your_validate_func, data[CONF_USERNAME], data[CONF_PASSWORD]
     # )
 
-    # hub = PlaceholderHub(data[CONF_HOST])
-    api = await hass.async_add_executor_job(create_api, data[CONF_HOST])
+    hub = PlaceholderHub(data[CONF_HOST])
 
-    if api is None:
-        raise CannotConnect
+    if not await hub.authenticate(data[CONF_USERNAME], data[CONF_PASSWORD]):
+        raise InvalidAuth
 
-    LOGGER.info("Successfully connected to {}", data[CONF_HOST])
-    return {"device_serial": api.get_serial(), "host": data[CONF_HOST]}
+    # If you cannot connect:
+    # throw CannotConnect
+    # If the authentication is wrong:
+    # InvalidAuth
+
+    # Return info that you want to store in the config entry.
+    return {"title": "Name of the device"}
 
 
 class ConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for enovatess."""
+    """Handle a config flow for enovatesss."""
 
     VERSION = 1
 
@@ -80,7 +80,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
-                validated_input = await validate_input(self.hass, user_input)
+                info = await validate_input(self.hass, user_input)
             except CannotConnect:
                 errors["base"] = "cannot_connect"
             except InvalidAuth:
@@ -89,10 +89,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
-                # return self.async_create_entry(title=info["title"], data=user_input)
-                return self.async_create_entry(
-                    title=validated_input["device_serial"], data=user_input
-                )
+                return self.async_create_entry(title=info["title"], data=user_input)
 
         return self.async_show_form(
             step_id="user", data_schema=STEP_USER_DATA_SCHEMA, errors=errors

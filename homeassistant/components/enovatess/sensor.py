@@ -13,7 +13,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
+from homeassistant.const import CONF_HOST
+from .const import DOMAIN, LOGGER
 from .dummyenoone import DummyEnoOne
 from .modbusenoone import ModbusEnoOne
 
@@ -25,7 +26,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Enovates Sensors based on a config entry."""
     # coordinator = entry.runtime_data
-    api = ModbusEnoOne("192.168.30.31")
+    api = ModbusEnoOne(entry.data[CONF_HOST])
     async_add_entities([EnovatesChargerL1Current(api), EnovatesVoltageL1(api)])
 
 
@@ -60,7 +61,7 @@ class EnovatesChargerL1Current(SensorEntity):
             identifiers={(DOMAIN, self._device_id)},
             name=self._device_name,
             manufacturer="Enovates",
-            model="Device Model",
+            model=self._api.get_model_number(),
             sw_version="1.0.0",
         )
 
@@ -103,7 +104,7 @@ class EnovatesVoltageL1(SensorEntity):
             identifiers={(DOMAIN, self._device_id)},
             name=self._device_name,
             manufacturer="Enovates",
-            model="Device Model",
+            model=self._api.get_model_number(),
             sw_version="1.0.0",
         )
 

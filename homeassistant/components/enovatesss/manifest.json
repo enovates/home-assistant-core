@@ -1,0 +1,16 @@
+{
+  "domain": "enovatesss",
+  "name": "enovatesss",
+  "codeowners": [
+    "@maju101"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/enovatesss",
+  "homekit": {},
+  "iot_class": "local_polling",
+  "quality_scale": "bronze",
+  "requirements": [],
+  "ssdp": [],
+  "zeroconf": []
+}
