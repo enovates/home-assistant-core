@@ -18,7 +18,6 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
-from .dummyenoone import DummyEnoOne
 from .modbusenoone import ModbusEnoOne
 
 
@@ -43,13 +42,13 @@ class EnovatesChargerL1Current(SensorEntity):
     _attr_suggested_display_precision = 2
     _attr_native_value = 0.0
 
-    def __init__(self, eno_one_api: DummyEnoOne) -> None:
+    def __init__(self, eno_one_api: ModbusEnoOne) -> None:
         """Construct the Charger L1 Current sensor."""
         super().__init__()
         self._api = eno_one_api
         self._attr_native_value = self._api.get_charger_current_l1()
-        self._device_id = "EnoONE1234"
-        self._device_name = "EnoONes"
+        self._device_id = self._api.get_serial()
+        self._device_name = self._api.get_serial()
 
     @property
     def unique_id(self) -> str | None:
@@ -64,8 +63,8 @@ class EnovatesChargerL1Current(SensorEntity):
             identifiers={(DOMAIN, self._device_id)},
             name=self._device_name,
             manufacturer="Enovates",
-            model=self._api.get_model_number(),
-            sw_version="1.0.0",
+            model=self._api.get_model_number(),  # TODO: probably a bad idea to fetch this every time
+            sw_version=self._api.get_firmware_version(),
         )
 
     def update(self) -> None:
@@ -86,13 +85,13 @@ class EnovatesVoltageL1(SensorEntity):
     _attr_suggested_display_precision = 2
     _attr_native_value = 0.0
 
-    def __init__(self, eno_one_api: DummyEnoOne) -> None:
+    def __init__(self, eno_one_api: ModbusEnoOne) -> None:
         """Construct the Charger L1 Voltage sensor."""
         super().__init__()
         self._api = eno_one_api
         self._attr_native_value = self._api.get_charger_voltage_l1()
-        self._device_id = "EnoONE1234"
-        self._device_name = "EnoONes"
+        self._device_id = self._api.get_serial()
+        self._device_name = self._api.get_serial()
 
     @property
     def unique_id(self) -> str | None:
@@ -108,7 +107,7 @@ class EnovatesVoltageL1(SensorEntity):
             name=self._device_name,
             manufacturer="Enovates",
             model=self._api.get_model_number(),
-            sw_version="1.0.0",
+            sw_version=self._api.get_firmware_version(),
         )
 
     def update(self) -> None:
