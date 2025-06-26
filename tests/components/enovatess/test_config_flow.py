@@ -3,8 +3,8 @@
 from unittest.mock import AsyncMock, patch
 
 from homeassistant import config_entries
-from homeassistant.components.enovatess.config_flow import CannotConnect, InvalidAuth
-from homeassistant.components.enovatess.const import DOMAIN
+from homeassistant.components.enovates.config_flow import CannotConnect, InvalidAuth
+from homeassistant.components.enovates.const import DOMAIN
 from homeassistant.const import CONF_HOST, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType

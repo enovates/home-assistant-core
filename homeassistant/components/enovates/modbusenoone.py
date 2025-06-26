@@ -84,7 +84,7 @@ class ModbusEnoOne:
                 )
                 return string_bytes.decode("ascii", errors="ignore").rstrip("\x00")
 
-        except Exception as e:
+        except Exception:
             # logger.error(f"Exception reading register {address}: {e}")
             return None
 

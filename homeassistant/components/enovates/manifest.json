@@ -1,11 +1,14 @@
 {
   "domain": "enovates",
-  "name": "Enovates",
+  "name": "enovates",
   "codeowners": ["@maju101"],
-  "config_flow": false,
-  "documentation": "https://www.home-assistant.io/integrations/enocean",
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://www.home-assistant.io/integrations/enovates",
+  "homekit": {},
   "iot_class": "local_polling",
-  "loggers": ["enovates"],
   "quality_scale": "bronze",
-  "requirements": []
+  "requirements": ["pymodbus==3.9.2"],
+  "ssdp": [],
+  "zeroconf": []
 }

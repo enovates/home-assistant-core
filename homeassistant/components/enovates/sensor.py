@@ -2,85 +2,35 @@
 
 from __future__ import annotations
 
-import logging
-import random
-
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfElectricCurrent, UnitOfPower
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    CONF_HOST,
+    UnitOfElectricCurrent,
+    UnitOfElectricPotential,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .const import DOMAIN
-from .enoone import EnoOne
+from .dummyenoone import DummyEnoOne
+from .modbusenoone import ModbusEnoOne
 
-_LOG = logging.getLogger("enovates")
 
-
-def setup_platform(
+async def async_setup_entry(
     hass: HomeAssistant,
-    config: ConfigType,
-    add_entities: AddEntitiesCallback,
-    discovery_info: DiscoveryInfoType | None = None,
+    entry: ConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up the sensor platform."""
-
-    eno_one_api = EnoOne()
-
-    add_entities(
-        [
-            EnovatesChargerL1Current(eno_one_api),
-            EnovatesChargerL2Current(eno_one_api),
-            EnovatesChargerL3Current(eno_one_api),
-            EnovatesChargerTotalActivePowerSensor(eno_one_api),
-        ]
-    )
-
-
-class EnovatesChargerTotalActivePowerSensor(SensorEntity):
-    """Representation the Enovates EnoOne L1 total active power."""
-
-    _attr_name = "Charger total active power"
-    _attr_native_unit_of_measurement = UnitOfPower.WATT
-    _attr_device_class = SensorDeviceClass.POWER
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_suggested_display_precision = 2
-
-    def __init__(self, eno_one_api: EnoOne) -> None:
-        """Construct the EnovatesChargerTotalActivePowerSensor."""
-        super().__init__()
-        self._api = eno_one_api
-        self._attr_native_value = self._api.get_charger_L1_current()  # this is wrong!
-        self._device_id = "EnoONE123"
-        self._device_name = "EnoONe"
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return the entity unique id."""
-        return "EnovatesChargerTotalActivePowerSensor"
-        # return f"{self._device_id}_{self._sensor_type}"
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info of this entity's device."""
-        _LOG.warning("77777777777777 ---- here device info")
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=self._device_name,
-            manufacturer="Enovates",
-            model="Device Model",
-            sw_version="1.0.0",
-        )
-
-    def update(self) -> None:
-        """Update the state of this entity."""
-        _LOG.warning("77777777777777 ---- here update")
-        self._attr_native_value = self._api.get_charger_L1_current()
+    """Set up Enovates Sensors based on a config entry."""
+    # coordinator = entry.runtime_data
+    api = ModbusEnoOne(entry.data[CONF_HOST])
+    async_add_entities([EnovatesChargerL1Current(api), EnovatesVoltageL1(api)])
 
 
 class EnovatesChargerL1Current(SensorEntity):
@@ -93,13 +43,13 @@ class EnovatesChargerL1Current(SensorEntity):
     _attr_suggested_display_precision = 2
     _attr_native_value = 0.0
 
-    def __init__(self, eno_one_api: EnoOne) -> None:
+    def __init__(self, eno_one_api: DummyEnoOne) -> None:
         """Construct the Charger L1 Current sensor."""
         super().__init__()
         self._api = eno_one_api
-        self._attr_native_value = self._api.get_charger_L1_current()
-        self._device_id = "EnoONE123"
-        self._device_name = "EnoONe"
+        self._attr_native_value = self._api.get_charger_current_l1()
+        self._device_id = "EnoONE1234"
+        self._device_name = "EnoONes"
 
     @property
     def unique_id(self) -> str | None:
@@ -114,7 +64,7 @@ class EnovatesChargerL1Current(SensorEntity):
             identifiers={(DOMAIN, self._device_id)},
             name=self._device_name,
             manufacturer="Enovates",
-            model="Device Model",
+            model=self._api.get_model_number(),
             sw_version="1.0.0",
         )
 
@@ -123,90 +73,41 @@ class EnovatesChargerL1Current(SensorEntity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
-        self._attr_native_value = random.uniform(10, 11)
+        self._attr_native_value = self._api.get_charger_current_l1()
 
 
-class EnovatesChargerL2Current(SensorEntity):
-    """Sensor representing the current measured on L2 of the charger."""
+class EnovatesVoltageL1(SensorEntity):
+    """Sensor representing the voltage measured on L1 of the charger."""
 
-    _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
-    _attr_device_class = SensorDeviceClass.CURRENT
+    _attr_name = "Charger voltage L1"
+    _attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
+    _attr_device_class = SensorDeviceClass.VOLTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_suggested_display_precision = 2
     _attr_native_value = 0.0
 
-    def __init__(self, eno_one_api: EnoOne) -> None:
-        """Construct the Charger L2 Current sensor."""
+    def __init__(self, eno_one_api: DummyEnoOne) -> None:
+        """Construct the Charger L1 Voltage sensor."""
         super().__init__()
-        self._device_id = "EnoONE123"
-        self._device_name = "EnoONe"
         self._api = eno_one_api
-        self._attr_native_value = self._api.get_charger_L2_current()
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        """Return the device info of the device associated with this entity."""
-
-        return DeviceInfo(
-            identifiers={(DOMAIN, self._device_id)},
-            name=self._device_name,
-            manufacturer="Enovates",
-            model="Device Model",
-            sw_version="1.0.0",
-        )
-
-    @property
-    def name(self) -> str:
-        """Return the name of this entity."""
-        return "Charger L2 current"
-        # return f"My Device {self._sensor_type}"
+        self._attr_native_value = self._api.get_charger_voltage_l1()
+        self._device_id = "EnoONE1234"
+        self._device_name = "EnoONes"
 
     @property
     def unique_id(self) -> str | None:
         """Return the unique id of this entity."""
-        return "EnovatesChargerL2Current"
-        # return f"{self._device_id}_{self._sensor_type}"
-
-    def update(self) -> None:
-        """Fetch new state data for the sensor.
-
-        This is the only method that should fetch new data for Home Assistant.
-        """
-        self._attr_native_value = random.uniform(10, 11)
-
-
-class EnovatesChargerL3Current(SensorEntity):
-    """Sensor representing the current measured on L3 of the charger."""
-
-    _attr_name = "Charger L3 current"
-    _attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
-    _attr_device_class = SensorDeviceClass.CURRENT
-    _attr_state_class = SensorStateClass.MEASUREMENT
-    _attr_suggested_display_precision = 2
-    _attr_native_value = 0.0
-
-    def __init__(self, eno_one_api: EnoOne) -> None:
-        """Construct the Charger L3 Current sensor."""
-        super().__init__()
-        self._device_id = "EnoONE123"
-        self._device_name = "EnoONe"
-        self._api = eno_one_api
-        self._attr_native_value = self._api.get_charger_L3_current()
-
-    @property
-    def unique_id(self) -> str | None:
-        """Return the unique id of this entity."""
-        return "EnovatesChargerL3Current"
+        return "EnovatesVoltage"
         # return f"{self._device_id}_{self._sensor_type}"
 
     @property
     def device_info(self) -> DeviceInfo:
-        """Return the device info of the device associated with this entity."""
+        """Return the device info of this entity's device."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._device_id)},
             name=self._device_name,
             manufacturer="Enovates",
-            model="Device Model",
+            model=self._api.get_model_number(),
             sw_version="1.0.0",
         )
 
@@ -215,4 +116,4 @@ class EnovatesChargerL3Current(SensorEntity):
 
         This is the only method that should fetch new data for Home Assistant.
         """
-        self._attr_native_value = random.uniform(10, 11)
+        self._attr_native_value = self._api.get_charger_voltage_l1()

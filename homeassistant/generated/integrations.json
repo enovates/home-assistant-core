@@ -1735,12 +1735,6 @@
     "enovates": {
       "name": "Enovates",
       "integration_type": "hub",
-      "config_flow": false,
-      "iot_class": "local_polling"
-    },
-    "enovatess": {
-      "name": "enovatess",
-      "integration_type": "hub",
       "config_flow": true,
       "iot_class": "local_polling"
     },

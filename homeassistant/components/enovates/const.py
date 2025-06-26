@@ -1,6 +1,4 @@
-"""Constants for the EnergyZero integration."""
-
-from __future__ import annotations
+"""Constants for the enovatess integration."""
 
 import logging
 
