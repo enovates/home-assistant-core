@@ -1782,7 +1782,7 @@ pymiele==0.5.2
 # homeassistant.components.mochad
 pymochad==0.2.0
 
-# homeassistant.components.enovatess
+# homeassistant.components.enovates
 # homeassistant.components.modbus
 pymodbus==3.9.2
 
