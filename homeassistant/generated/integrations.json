@@ -1733,7 +1733,13 @@
       "single_config_entry": true
     },
     "enovates": {
-      "name": "Enovates",
+      "name": "enovates",
+      "integration_type": "hub",
+      "config_flow": true,
+      "iot_class": "local_polling"
+    },
+    "enovatesss": {
+      "name": "enovatesss",
       "integration_type": "hub",
       "config_flow": true,
       "iot_class": "local_polling"

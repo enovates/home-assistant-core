@@ -5,15 +5,15 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-PLATFORMS: list[str] = ["sensor"]
+PLATFORMS: list[str] = ["binary_sensor", "sensor"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up enovatess from a config entry."""
+    """Set up enovates from a config entry."""
 
     # Store data for your integration
-    hass.data.setdefault("enovatess", {})
-    hass.data["enovatess"][entry.entry_id] = {}
+    hass.data.setdefault("enovates", {})
+    hass.data["enovates"][entry.entry_id] = {}
 
     # Forward the setup to the sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -26,6 +26,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if unload_ok:
-        hass.data["enovatess"].pop(entry.entry_id)
+        hass.data["enovates"].pop(entry.entry_id)
 
     return unload_ok

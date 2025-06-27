@@ -1,4 +1,4 @@
-"""Constants for the enovatess integration."""
+"""Constants for the enovates integration."""
 
 import logging
 

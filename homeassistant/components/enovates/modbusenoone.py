@@ -112,8 +112,14 @@ class ModbusEnoOne:
         """Get the lock state. 0 is unlocked, 1 is locked, 2 is 'there is no lock' (i.e. fixed cable)."""
         return self._read_holding_register(54, "uint16")
 
+    def is_locked(self) -> bool:
+        return self.get_lock_state() == 1
+
     def get_contactor_state(self) -> int:
         return self._read_holding_register(55, "uint16")
+
+    def is_charging(self) -> bool:
+        return self.get_contactor_state() == 1
 
     def get_led_color(self) -> int:
         """Get LED color. (0 off, 1 red, 2 green 3 blue 5 cyan, 5 yellow 6 pinkt 7 white, 8 orange 9 purple)."""
