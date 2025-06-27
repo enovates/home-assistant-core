@@ -1,9 +1,9 @@
 """Binary sensors for Enovates integration"""
 
 from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass
-from operator import attrgetter
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -13,29 +13,10 @@ from homeassistant.components.binary_sensor import (
 from homeassistant.components.enovates.const import DOMAIN
 from homeassistant.components.enovates.modbusenoone import ModbusEnoOne
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, CONF_HOST
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-
-from typing import Any
-
-from homeassistant.components.sensor import (
-    SensorDeviceClass,
-    SensorEntity,
-    SensorEntityDescription,
-    SensorStateClass,
-)
-from homeassistant.const import (
-    CONCENTRATION_PARTS_PER_MILLION,
-    PERCENTAGE,
-    UnitOfPressure,
-    UnitOfTemperature,
-)
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 
 @dataclass(frozen=True, kw_only=True)
