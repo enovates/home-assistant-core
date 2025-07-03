@@ -207,15 +207,14 @@ class ModbusEnoOne:
     def is_evse_offering_power(self) -> bool:
         return self.get_charger_pwm_as_amp() > 0
 
-    def get_cable_plugged_in_state(self) -> str:
+    def is_cable_plugged_in(self) -> bool:
         """Check and return cable connected state.
-
-        Can return 'plugged_in', 'plugged_out' or 'permanently_attached'
+        Cabled chargers always report plugged_in (true)
         """
-        if self.get_model_number()[6] == "C":
-            return "permanently_attached"
+        if self.get_lock_state() == 2:
+            return True
         else:
-            return "plugged_in" if self.get_pp() > 0 else "plugged_out"
+            return self.get_pp() > 0
 
     # PWM
     def get_charger_pwm_as_amp(self):
@@ -252,7 +251,6 @@ class ModbusEnoOne:
         return self._read_holding_register(5016, "string", 16)
 
     def get_serial(self) -> str:
-        LOGGER.warning("777777 --- call to getSerial")
         return self._read_holding_register(5032, "string", 16)
 
     def get_model_number(self) -> str:

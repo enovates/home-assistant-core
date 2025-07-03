@@ -1,4 +1,4 @@
-"""Binary sensors for Enovates integration"""
+"""Binary sensors for Enovates integration."""
 
 from __future__ import annotations
 
@@ -10,14 +10,14 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
-from homeassistant.components.enovates.const import DOMAIN
-from homeassistant.components.enovates.modbusenoone import ModbusEnoOne
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
-from .const import LOGGER
+
+from .const import DOMAIN, LOGGER
+from .modbusenoone import ModbusEnoOne
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -27,7 +27,7 @@ class EnovatesBinarySensorEntityDescription(BinarySensorEntityDescription):
     value_fn: Callable[[ModbusEnoOne], bool]
 
 
-SENSOR_TYPES: list[EnovatesBinarySensorEntityDescription, ...] = [
+SENSOR_TYPES: list[EnovatesBinarySensorEntityDescription] = [
     EnovatesBinarySensorEntityDescription(
         key="charging",
         translation_key="charging",
@@ -77,7 +77,7 @@ async def async_setup_entry(
     config_entry: ConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up envoy binary sensor platform."""
+    """Set up Enovates binary sensor platform."""
     # coordinator = config_entry.runtime_data
     # envoy_data = coordinator.envoy.data
     # assert envoy_data is not None
@@ -96,6 +96,14 @@ async def async_setup_entry(
                 value_fn=lambda api: api.is_locked(),
             )
         )
+        SENSOR_TYPES.append(
+            EnovatesBinarySensorEntityDescription(
+                key="cable_plugged_in",
+                translation_key="cable_plugged_in",
+                device_class=BinarySensorDeviceClass.PLUG,
+                value_fn=lambda api: api.is_cable_plugged_in(),
+            )
+        )
 
     async_add_entities(entities)
 
@@ -111,7 +119,7 @@ class EnovatesBinarySensor(BinarySensorEntity):
         api: ModbusEnoOne,
         description: EnovatesBinarySensorEntityDescription,
     ) -> None:
-        """Initialize an EpionSensor."""
+        """Initialize an EnovatesBinarySensor."""
         serial = api.get_serial()
         self._device_id = serial
         self.entity_description = description
