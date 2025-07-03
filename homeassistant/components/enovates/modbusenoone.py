@@ -5,7 +5,7 @@ import struct
 
 from pymodbus.client import ModbusTcpClient
 
-logger = logging.getLogger(__name__)
+from .const import LOGGER
 
 
 class ModbusEnoOne:
@@ -39,7 +39,7 @@ class ModbusEnoOne:
 
         """
         if not self.client or not self.client.is_socket_open():
-            logger.error("Modbus client not connected")
+            LOGGER.error("Modbus client not connected")
             return None
 
         try:
@@ -60,7 +60,7 @@ class ModbusEnoOne:
                 )
 
             if result.isError():
-                logger.error(f"Error reading register {address}: {result}")
+                LOGGER.error(f"Error reading register {address}: {result}")
                 return None
 
             # Convert based on data type
@@ -101,7 +101,11 @@ class ModbusEnoOne:
         return self._read_holding_register(51, "uint16")
 
     def get_OCPP_state(self) -> int:
-        """Get OCPP state. 1 is accepted, 0 anything else."""
+        """Get OCPP state.
+
+        1 is accepted, 0 anything else.
+        Will also return 1 in case of NO_OCPP.
+        """
         return self._read_holding_register(52, "uint16")
 
     def get_loadshedding_state(self) -> int:
@@ -194,6 +198,25 @@ class ModbusEnoOne:
         """Get Mode3 state as string."""
         return self._read_holding_register(301, "string", 1)
 
+    def is_ev_connected(self) -> bool:
+        return self.get_mode3_state()[0] != "A"  # TODO state F
+
+    def is_ev_requesting_power(self) -> bool:
+        return self.get_mode3_state()[0] == "C"
+
+    def is_evse_offering_power(self) -> bool:
+        return self.get_charger_pwm_as_amp() > 0
+
+    def get_cable_plugged_in_state(self) -> str:
+        """Check and return cable connected state.
+
+        Can return 'plugged_in', 'plugged_out' or 'permanently_attached'
+        """
+        if self.get_model_number()[6] == "C":
+            return "permanently_attached"
+        else:
+            return "plugged_in" if self.get_pp() > 0 else "plugged_out"
+
     # PWM
     def get_charger_pwm_as_amp(self):
         """Get charger PWM as amp in A."""
@@ -229,6 +252,7 @@ class ModbusEnoOne:
         return self._read_holding_register(5016, "string", 16)
 
     def get_serial(self) -> str:
+        LOGGER.warning("777777 --- call to getSerial")
         return self._read_holding_register(5032, "string", 16)
 
     def get_model_number(self) -> str:

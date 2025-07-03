@@ -65,7 +65,11 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
         raise CannotConnect
 
     LOGGER.info("Successfully connected to {}", data[CONF_HOST])
-    return {"device_serial": api.get_serial(), "host": data[CONF_HOST]}
+    return {
+        "device_serial": api.get_serial(),
+        "host": data[CONF_HOST],
+        "my_thing": "huphuphup",
+    }
 
 
 class ConfigFlow(ConfigFlow, domain=DOMAIN):
