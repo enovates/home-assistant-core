@@ -17,6 +17,7 @@ from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from .const import LOGGER
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -78,7 +79,7 @@ class EnovatesBinarySensor(BinarySensorEntity):
         self._attr_unique_id = f"{api.get_serial()}_{description.key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, api.get_serial())},
-            manufacturer="Epion",
+            manufacturer="Enovates",
             name=api.get_serial(),
             sw_version=api.get_firmware_version(),
             model=api.get_model_number(),
@@ -87,7 +88,9 @@ class EnovatesBinarySensor(BinarySensorEntity):
     @property
     def is_on(self) -> bool | None:
         """Return the value reported by the sensor, or None if the relevant sensor can't produce a current measurement."""
-        return self.entity_description.value_fn(self._api)
+        ret = self.entity_description.value_fn(self._api)()
+        LOGGER.warn(f"7777777777  ---- {self.entity_description.key} {ret}")
+        return ret
 
     # @property
     # def device_info(self) -> DeviceInfo:
