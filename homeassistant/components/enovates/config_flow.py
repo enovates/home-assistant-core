@@ -21,21 +21,6 @@ _LOGGER = logging.getLogger(__name__)
 STEP_USER_DATA_SCHEMA = vol.Schema({vol.Required(CONF_HOST): str})
 
 
-# class PlaceholderHub:
-#     """Placeholder class to make tests pass.
-
-#     TODO Remove this placeholder class and replace with things from your PyPI package.
-#     """
-
-#     def __init__(self, host: str) -> None:
-#         """Initialize."""
-#         self.host = host
-
-#     async def authenticate(self, username: str, password: str) -> bool:
-#         """Test if we can authenticate with the host."""
-#         return True
-
-
 def create_api(hostname) -> ModbusEnoOne | None:
     LOGGER.warning("Creating Enovates Modbus API to: " + hostname)
 
@@ -50,15 +35,6 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    # TODO validate the data can be used to set up a connection.
-
-    # If your PyPI package is not built with async, pass your methods
-    # to the executor:
-    # await hass.async_add_executor_job(
-    #     your_validate_func, data[CONF_USERNAME], data[CONF_PASSWORD]
-    # )
-
-    # hub = PlaceholderHub(data[CONF_HOST])
     api = await hass.async_add_executor_job(create_api, data[CONF_HOST])
 
     if api is None:
@@ -68,7 +44,8 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     return {
         "device_serial": api.get_serial(),
         "host": data[CONF_HOST],
-        "my_thing": "huphuphup",
+        "model_number": api.get_model_number(),
+        "has_lock": api.get_lock_state() != 2
     }
 
 
@@ -96,7 +73,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(validated_input["device_serial"])
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=validated_input["device_serial"], data=user_input
+                    title=validated_input["device_serial"], data=validated_input
                 )
 
         return self.async_show_form(

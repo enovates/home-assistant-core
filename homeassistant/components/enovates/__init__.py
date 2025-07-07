@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
+
+from .modbusenoone import ModbusEnoOne
 
 PLATFORMS: list[str] = ["binary_sensor", "sensor"]
 
@@ -14,6 +17,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store data for your integration
     hass.data.setdefault("enovates", {})
     hass.data["enovates"][entry.entry_id] = {}
+    entry.runtime_data = {}
+    entry.runtime_data["api"] = ModbusEnoOne(entry.data[CONF_HOST])
 
     # Forward the setup to the sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
