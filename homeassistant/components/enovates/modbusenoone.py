@@ -39,8 +39,9 @@ class ModbusEnoOne:
 
         """
         if not self.client or not self.client.is_socket_open():
-            LOGGER.error("Modbus client not connected")
-            return None
+            LOGGER.warning("Modbus client not connected")
+            self.client.connect()
+            # TODO re think reconnect logic
 
         try:
             if data_type in ["uint32", "int32"]:
@@ -117,7 +118,9 @@ class ModbusEnoOne:
         return self._read_holding_register(54, "uint16")
 
     def is_locked(self) -> bool:
-        return self.get_lock_state() == 1
+        lock_state = self.get_lock_state()
+        ret = lock_state == 1
+        LOGGER.warn(f"7777777 --- {lock_state} {ret}")
 
     def get_contactor_state(self) -> int:
         return self._read_holding_register(55, "uint16")
@@ -199,22 +202,37 @@ class ModbusEnoOne:
         return self._read_holding_register(301, "string", 1)
 
     def is_ev_connected(self) -> bool:
-        return self.get_mode3_state()[0] != "A"  # TODO state F
+        mode3 = self.get_mode3_state()
+        if mode3 is None:
+            return None
+        return mode3[0] != "A"  # TODO state F
 
     def is_ev_requesting_power(self) -> bool:
-        return self.get_mode3_state()[0] == "C"
+        mode3 = self.get_mode3_state()
+        if mode3 is None:
+            return None
+        return mode3[0] == "C"
 
     def is_evse_offering_power(self) -> bool:
-        return self.get_charger_pwm_as_amp() > 0
+        pwm = self.get_charger_pwm_as_amp()
+        if pwm is None:
+            return None
+        return pwm > 0
 
     def is_cable_plugged_in(self) -> bool:
         """Check and return cable connected state.
         Cabled chargers always report plugged_in (true)
         """
-        if self.get_lock_state() == 2:
+        lock_state = self.get_lock_state()
+        if lock_state is None:
+            return None
+        if lock_state == 2:
             return True
         else:
-            return self.get_pp() > 0
+            pp = self.get_pp()
+            if pp is None:
+                return None
+            return pp > 0
 
     # PWM
     def get_charger_pwm_as_amp(self):

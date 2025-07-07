@@ -83,27 +83,29 @@ async def async_setup_entry(
     # assert envoy_data is not None
     entities: list[BinarySensorEntity] = []
     api = ModbusEnoOne(config_entry.data[CONF_HOST])
-    entities.extend(
-        EnovatesBinarySensor(api, description) for description in SENSOR_TYPES
-    )
     if api.get_lock_state() != 2:
         LOGGER.warning("777777777 --- charger has lock, adding entity")
         SENSOR_TYPES.append(
             EnovatesBinarySensorEntityDescription(
                 key="lock",
                 translation_key="lock",
+                name="cable locked",
                 device_class=BinarySensorDeviceClass.LOCK,
-                value_fn=lambda api: api.is_locked(),
+                value_fn=lambda api: not api.is_locked(),  # this inversion is NOT a mistake.
             )
         )
         SENSOR_TYPES.append(
             EnovatesBinarySensorEntityDescription(
                 key="cable_plugged_in",
                 translation_key="cable_plugged_in",
+                name="Cable plugged in",
                 device_class=BinarySensorDeviceClass.PLUG,
                 value_fn=lambda api: api.is_cable_plugged_in(),
             )
         )
+    entities.extend(
+        EnovatesBinarySensor(api, description) for description in SENSOR_TYPES
+    )
 
     async_add_entities(entities)
 
