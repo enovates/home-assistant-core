@@ -1,6 +1,5 @@
 """Modbus EnoONE APi."""
 
-import logging
 import struct
 
 from pymodbus.client import ModbusTcpClient
@@ -213,8 +212,7 @@ class ModbusEnoOne:
         """
         if self.get_lock_state() == 2:
             return True
-        else:
-            return self.get_pp() > 0
+        return self.get_pp() > 0
 
     # PWM
     def get_charger_pwm_as_amp(self):
