@@ -11,12 +11,11 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN, LOGGER
+from .const import DOMAIN
 from .modbusenoone import ModbusEnoOne
 
 
@@ -62,13 +61,6 @@ SENSOR_TYPES: list[EnovatesBinarySensorEntityDescription] = [
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         value_fn=lambda api: api.get_OCPP_state() == 1,
     ),
-    EnovatesBinarySensorEntityDescription(
-        key="loadshedding_device_connected",
-        translation_key="loadshedding_device_connected",
-        name="Loadshedding device connected",
-        device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        value_fn=lambda api: api.get_loadshedding_state() == 1,
-    ),
 ]
 
 
@@ -81,7 +73,7 @@ async def async_setup_entry(
 
     entities: list[BinarySensorEntity] = []
     api = config_entry.runtime_data["api"]
-    if config_entry.data['has_lock']:
+    if config_entry.data.get("has_lock"):
         SENSOR_TYPES.append(
             EnovatesBinarySensorEntityDescription(
                 key="lock",
@@ -100,6 +92,18 @@ async def async_setup_entry(
                 value_fn=lambda api: api.is_cable_plugged_in(),
             )
         )
+    if config_entry.data.get("has_loadshedding_device"):
+        # Make these sensors only if there is a loadshedding device
+        SENSOR_TYPES.append(
+            EnovatesBinarySensorEntityDescription(
+                key="loadshedding_connected",
+                translation_key="loadshedding_connected",
+                name="Loadshedding device connected",
+                device_class=BinarySensorDeviceClass.CONNECTIVITY,
+                value_fn=lambda api: api.is_loadshedding_device_connected(),
+            )
+        )
+
     entities.extend(
         EnovatesBinarySensor(api, description) for description in SENSOR_TYPES
     )

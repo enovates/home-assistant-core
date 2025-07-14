@@ -97,15 +97,25 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle the loadshedding device configuration step."""
         if user_input is not None:
+            # Ensure we have validated input
+            if not self._validated_input:
+                _LOGGER.error("No validated input available in loadshedding step")
+                return self.async_abort(reason="missing_validated_input")
+
             # Combine the validated input with the loadshedding device info
             final_data = {
                 **self._validated_input,
                 "has_loadshedding_device": user_input["has_loadshedding_device"],
             }
 
-            return self.async_create_entry(
-                title=self._validated_input["device_serial"], data=final_data
+            # Get the title, with a fallback if device_serial is not available
+            title = self._validated_input.get("device_serial", "Enovates Device")
+
+            _LOGGER.info(
+                "Creating config entry with title: %s, data: %s", title, final_data
             )
+
+            return self.async_create_entry(title=title, data=final_data)
 
         return self.async_show_form(
             step_id="loadshedding",

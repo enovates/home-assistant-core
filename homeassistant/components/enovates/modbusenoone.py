@@ -7,6 +7,10 @@ from pymodbus.client import ModbusTcpClient
 from .const import LOGGER
 
 
+class ModbusConnectionError:
+    pass
+
+
 class ModbusEnoOne:
     """Modbus client for Enovates EnoOne charger."""
 
@@ -23,7 +27,9 @@ class ModbusEnoOne:
         self.port = port
         self.unit_id = unit_id
         self.client = ModbusTcpClient(self.host, port=self.port)
-        self.client.connect() # TODO throw exception if connection cannot be made? Different requirements for configflow vs normal startup
+        success = self.client.connect()  # TODO throw exception if connection cannot be made? Different requirements for configflow vs normal startup
+        if not success:
+            raise ModbusConnectionError
 
     def _read_holding_register(self, address, data_type="uint16", count=1):
         """Read holding register(s) and convert to specified data type.
@@ -37,10 +43,10 @@ class ModbusEnoOne:
             Converted value or None if error
 
         """
-        if not self.client or not self.client.is_socket_open():
-            LOGGER.warning("Modbus client not connected")
-            self.client.connect()
-            # TODO re think reconnect logic
+        # if not self.client or not self.client.is_socket_open():
+        #     LOGGER.warning("Modbus client not connected")
+        #     self.client.connect()
+        #     # TODO re think reconnect logic
 
         try:
             if data_type in ["uint32", "int32"]:
@@ -111,6 +117,13 @@ class ModbusEnoOne:
     def get_loadshedding_state(self) -> int:
         """Get loadshedding state. Device type None == 0, anything else == 1."""
         return self._read_holding_register(53, "uint16")
+
+    def is_loadshedding_device_connected(self) -> bool:
+        """Check if a loadshedding device is connected."""
+        ret = self.get_loadshedding_state()
+        if ret is None:
+            return False
+        return ret == 1
 
     def get_lock_state(self) -> int:
         """Get the lock state. 0 is unlocked, 1 is locked, 2 is 'there is no lock' (i.e. fixed cable)."""
@@ -227,11 +240,10 @@ class ModbusEnoOne:
             return None
         if lock_state == 2:
             return True
-        else:
-            pp = self.get_pp()
-            if pp is None:
-                return None
-            return pp > 0
+        pp = self.get_pp()
+        if pp is None:
+            return None
+        return pp > 0
 
     # PWM
     def get_charger_pwm_as_amp(self):
