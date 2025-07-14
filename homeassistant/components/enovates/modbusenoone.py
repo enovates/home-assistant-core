@@ -1,37 +1,88 @@
-"""Modbus EnoONE APi."""
+"""Modbus EnoONE API."""
 
 import struct
+from typing import Optional, Union
 
 from pymodbus.client import ModbusTcpClient
+from pymodbus.exceptions import ModbusException, ConnectionException
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import LOGGER
 
 
-class ModbusConnectionError:
-    pass
+class ModbusConnectionError(HomeAssistantError):
+    """Error to indicate we cannot connect to the Modbus device."""
+
+
+class ModbusReadError(HomeAssistantError):
+    """Error to indicate a Modbus read operation failed."""
 
 
 class ModbusEnoOne:
     """Modbus client for Enovates EnoOne charger."""
 
-    def __init__(self, host, port=502, unit_id=1) -> None:
+    def __init__(self, host: str, port: int = 502, unit_id: int = 1) -> None:
         """Initialize the Modbus client.
 
         Args:
             host (str): IP address or hostname of the Modbus device
             port (int): Modbus TCP port (default: 502)
             unit_id (int): Modbus unit ID (default: 1)
-
         """
         self.host = host
         self.port = port
         self.unit_id = unit_id
-        self.client = ModbusTcpClient(self.host, port=self.port)
-        success = self.client.connect()  # TODO throw exception if connection cannot be made? Different requirements for configflow vs normal startup
-        if not success:
-            raise ModbusConnectionError
+        self.client: Optional[ModbusTcpClient] = None
+        self._is_connected = False
 
-    def _read_holding_register(self, address, data_type="uint16", count=1):
+        # Initialize and connect
+        self._connect()
+
+    def _connect(self) -> None:
+        """Establish connection to the Modbus device."""
+        try:
+            self.client = ModbusTcpClient(self.host, port=self.port)
+            success = self.client.connect()
+
+            if not success:
+                LOGGER.error(
+                    "Failed to connect to Modbus device at %s:%s", self.host, self.port
+                )
+                raise ModbusConnectionError(
+                    f"Cannot connect to Modbus device at {self.host}:{self.port}"
+                )
+
+            self._is_connected = True
+            LOGGER.info(
+                "Successfully connected to Modbus device at %s:%s", self.host, self.port
+            )
+
+        except ConnectionException as e:
+            LOGGER.error(
+                "Connection error to Modbus device at %s:%s: %s",
+                self.host,
+                self.port,
+                e,
+            )
+            raise ModbusConnectionError(f"Connection error: {e}") from e
+        except Exception as e:
+            LOGGER.error(
+                "Unexpected error connecting to Modbus device at %s:%s: %s",
+                self.host,
+                self.port,
+                e,
+            )
+            raise ModbusConnectionError(f"Unexpected connection error: {e}") from e
+
+    def _ensure_connected(self) -> None:
+        """Ensure we have a valid connection, reconnect if necessary."""
+        if not self._is_connected or not self.client or not self.client.connected:
+            LOGGER.warning("Modbus connection lost, attempting to reconnect...")
+            self._connect()
+
+    def _read_holding_register(
+        self, address: int, data_type: str = "uint16", count: int = 1
+    ) -> Optional[Union[int, str]]:
         """Read holding register(s) and convert to specified data type.
 
         Args:
@@ -41,12 +92,8 @@ class ModbusEnoOne:
 
         Returns:
             Converted value or None if error
-
         """
-        # if not self.client or not self.client.is_socket_open():
-        #     LOGGER.warning("Modbus client not connected")
-        #     self.client.connect()
-        #     # TODO re think reconnect logic
+        self._ensure_connected()
 
         try:
             if data_type in ["uint32", "int32"]:
@@ -66,47 +113,54 @@ class ModbusEnoOne:
                 )
 
             if result.isError():
-                LOGGER.error(f"Error reading register {address}: {result}")
+                LOGGER.error("Error reading register %s: %s", address, result)
                 return None
 
             # Convert based on data type
             if data_type == "uint16":
                 return result.registers[0]
-            if data_type == "int16":
+            elif data_type == "int16":
                 # Convert unsigned to signed
                 value = result.registers[0]
                 return value if value < 32768 else value - 65536
-            if data_type == "uint32":
+            elif data_type == "uint32":
                 # Combine two 16-bit registers (assuming big-endian)
                 return (result.registers[0] << 16) | result.registers[1]
-            if data_type == "int32":
+            elif data_type == "int32":
                 # Combine two 16-bit registers and convert to signed
                 value = (result.registers[0] << 16) | result.registers[1]
                 return value if value < 2147483648 else value - 4294967296
-            if data_type == "string":
+            elif data_type == "string":
                 # Convert registers to string
                 string_bytes = b"".join(
                     struct.pack(">H", reg) for reg in result.registers
                 )
                 return string_bytes.decode("ascii", errors="ignore").rstrip("\x00")
 
-        except Exception:
-            # logger.error(f"Exception reading register {address}: {e}")
+        except ModbusException as e:
+            LOGGER.error("Modbus exception reading register %s: %s", address, e)
+            return None
+        except Exception as e:
+            LOGGER.error("Unexpected error reading register %s: %s", address, e)
             return None
 
-    def get_api_major(self) -> int:
+    def get_api_major(self) -> Optional[int]:
+        """Get API major version."""
         return self._read_holding_register(0, "uint16")
 
-    def get_api_minor(self) -> int:
+    def get_api_minor(self) -> Optional[int]:
+        """Get API minor version."""
         return self._read_holding_register(1, "uint16")
 
-    def get_number_of_phases(self) -> int:
+    def get_number_of_phases(self) -> Optional[int]:
+        """Get number of phases."""
         return self._read_holding_register(50, "uint16")
 
-    def get_max_amp_per_phase(self) -> int:
+    def get_max_amp_per_phase(self) -> Optional[int]:
+        """Get maximum amperage per phase."""
         return self._read_holding_register(51, "uint16")
 
-    def get_OCPP_state(self) -> int:
+    def get_OCPP_state(self) -> Optional[int]:
         """Get OCPP state.
 
         1 is accepted, 0 anything else.
@@ -114,7 +168,7 @@ class ModbusEnoOne:
         """
         return self._read_holding_register(52, "uint16")
 
-    def get_loadshedding_state(self) -> int:
+    def get_loadshedding_state(self) -> Optional[int]:
         """Get loadshedding state. Device type None == 0, anything else == 1."""
         return self._read_holding_register(53, "uint16")
 
@@ -125,170 +179,212 @@ class ModbusEnoOne:
             return False
         return ret == 1
 
-    def get_lock_state(self) -> int:
+    def get_lock_state(self) -> Optional[int]:
         """Get the lock state. 0 is unlocked, 1 is locked, 2 is 'there is no lock' (i.e. fixed cable)."""
         return self._read_holding_register(54, "uint16")
 
-    def is_locked(self) -> bool:
+    def is_locked(self) -> Optional[bool]:
+        """Check if the charger is locked."""
         lock_state = self.get_lock_state()
-        ret = lock_state == 1
-        LOGGER.warn(f"7777777 --- {lock_state} {ret}")
+        if lock_state is None:
+            return None
+        return lock_state == 1
 
-    def get_contactor_state(self) -> int:
+    def get_contactor_state(self) -> Optional[int]:
+        """Get contactor state."""
         return self._read_holding_register(55, "uint16")
 
-    def is_charging(self) -> bool:
-        return self.get_contactor_state() == 1
+    def is_charging(self) -> Optional[bool]:
+        """Check if the charger is currently charging."""
+        contactor_state = self.get_contactor_state()
+        if contactor_state is None:
+            return None
+        return contactor_state == 1
 
-    def get_led_color(self) -> int:
-        """Get LED color. (0 off, 1 red, 2 green 3 blue 5 cyan, 5 yellow 6 pinkt 7 white, 8 orange 9 purple)."""
+    def get_led_color(self) -> Optional[int]:
+        """Get LED color. (0 off, 1 red, 2 green 3 blue 4 cyan, 5 yellow 6 pink 7 white, 8 orange 9 purple)."""
         return self._read_holding_register(56, "uint16")
 
     # Current sensors (L1, L2, L3)
-    def get_charger_current_l1(self) -> int:
+    def get_charger_current_l1(self) -> Optional[int]:
         """Get charger current L1 in mA."""
         return self._read_holding_register(200, "uint16")
 
-    def get_charger_current_l2(self) -> int:
+    def get_charger_current_l2(self) -> Optional[int]:
         """Get charger current L2 in mA."""
         return self._read_holding_register(201, "uint16")
 
-    def get_charger_current_l3(self) -> int:
+    def get_charger_current_l3(self) -> Optional[int]:
         """Get charger current L3 in mA."""
         return self._read_holding_register(202, "uint16")
 
     # Voltage sensors (L1, L2, L3)
-    def get_charger_voltage_l1(self) -> int:
+    def get_charger_voltage_l1(self) -> Optional[int]:
         """Get charger voltage L1 in V."""
         return self._read_holding_register(203, "int16")
 
-    def get_charger_voltage_l2(self) -> int:
+    def get_charger_voltage_l2(self) -> Optional[int]:
         """Get charger voltage L2 in V."""
         return self._read_holding_register(204, "int16")
 
-    def get_charger_voltage_l3(self) -> int:
+    def get_charger_voltage_l3(self) -> Optional[int]:
         """Get charger voltage L3 in V."""
         return self._read_holding_register(205, "int16")
 
     # Power sensors
-    def get_charger_active_power_total(self) -> int:
+    def get_charger_active_power_total(self) -> Optional[int]:
         """Get charger active power total in W."""
         return self._read_holding_register(206, "uint16")
 
-    def get_charger_active_power_l1(self) -> int:
+    def get_charger_active_power_l1(self) -> Optional[int]:
         """Get charger active power L1 in W."""
         return self._read_holding_register(207, "uint16")
 
-    def get_charger_active_power_l2(self) -> int:
+    def get_charger_active_power_l2(self) -> Optional[int]:
         """Get charger active power L2 in W."""
         return self._read_holding_register(208, "uint16")
 
-    def get_charger_active_power_l3(self) -> int:
+    def get_charger_active_power_l3(self) -> Optional[int]:
         """Get charger active power L3 in W."""
         return self._read_holding_register(209, "uint16")
 
     # Installation currents (32-bit)
-    def get_installation_current_l1(self) -> int:
+    def get_installation_current_l1(self) -> Optional[int]:
         """Get installation current L1 in mA."""
         return self._read_holding_register(210, "int32")
 
-    def get_installation_current_l2(self) -> int:
+    def get_installation_current_l2(self) -> Optional[int]:
         """Get installation current L2 in mA."""
         return self._read_holding_register(212, "int32")
 
-    def get_installation_current_l3(self) -> int:
+    def get_installation_current_l3(self) -> Optional[int]:
         """Get installation current L3 in mA."""
         return self._read_holding_register(214, "int32")
 
     # Energy
-    def get_total_active_energy_import(self) -> int:
+    def get_total_active_energy_import(self) -> Optional[int]:
         """Get total active energy import in Wh."""
         return self._read_holding_register(216, "uint32")
 
     # Mode3 state
-    def get_mode3_state_as_int(self) -> int:
+    def get_mode3_state_as_int(self) -> Optional[int]:
+        """Get Mode3 state as integer."""
         return self._read_holding_register(300, "uint16")
 
-    def get_mode3_state(self) -> str:
+    def get_mode3_state(self) -> Optional[str]:
         """Get Mode3 state as string."""
         return self._read_holding_register(301, "string", 1)
 
-    def is_ev_connected(self) -> bool:
+    def is_ev_connected(self) -> Optional[bool]:
+        """Check if an EV is connected."""
         mode3 = self.get_mode3_state()
         if mode3 is None:
             return None
-        return mode3[0] != "A"  # TODO state F
+        return mode3[0] != "A"  # TODO: state F
 
-    def is_ev_requesting_power(self) -> bool:
+    def is_ev_requesting_power(self) -> Optional[bool]:
+        """Check if EV is requesting power."""
         mode3 = self.get_mode3_state()
         if mode3 is None:
             return None
         return mode3[0] == "C"
 
-    def is_evse_offering_power(self) -> bool:
+    def is_evse_offering_power(self) -> Optional[bool]:
+        """Check if EVSE is offering power."""
         pwm = self.get_charger_pwm_as_amp()
         if pwm is None:
             return None
         return pwm > 0
 
-    def is_cable_plugged_in(self) -> bool:
+    def is_cable_plugged_in(self) -> Optional[bool]:
         """Check and return cable connected state.
-        Cabled chargers always report plugged_in (true)
+        Cabled chargers always report plugged_in (True).
         """
         lock_state = self.get_lock_state()
         if lock_state is None:
             return None
         if lock_state == 2:
             return True
-        pp = self.get_pp()
-        if pp is None:
-            return None
-        return pp > 0
+        else:
+            pp = self.get_pp()
+            if pp is None:
+                return None
+            return pp > 0
 
     # PWM
-    def get_charger_pwm_as_amp(self):
+    def get_charger_pwm_as_amp(self) -> Optional[int]:
         """Get charger PWM as amp in A."""
         return self._read_holding_register(303, "uint16")
 
-    def get_charger_pwm(self):
+    def get_charger_pwm(self) -> Optional[int]:
         """Get charger PWM value."""
         return self._read_holding_register(304, "uint16")
 
-    def get_pp(self):
+    def get_pp(self) -> Optional[int]:
+        """Get PP (Proximity Pilot) value."""
         return self._read_holding_register(305, "uint16")
 
-    def get_cp_plus(self):
+    def get_cp_plus(self) -> Optional[int]:
+        """Get CP+ (Control Pilot positive) value."""
         return self._read_holding_register(306, "uint16")
 
-    def get_cp_min(self):
+    def get_cp_min(self) -> Optional[int]:
+        """Get CP- (Control Pilot negative) value."""
         return self._read_holding_register(307, "int16")
 
     # EMS
-    def get_ems_applied_softlimit(self) -> int:
+    def get_ems_applied_softlimit(self) -> Optional[int]:
         """Get EMS applied softlimit in A."""
         return self._read_holding_register(400, "int16")
 
     # Token
-    def get_last_token(self) -> str | None:
+    def get_last_token(self) -> Optional[str]:
         """Get last scanned token as string."""
         return self._read_holding_register(401, "string", 16)
 
-    def get_manufacturer(self) -> str:
+    def get_manufacturer(self) -> Optional[str]:
+        """Get manufacturer name."""
         return self._read_holding_register(5000, "string", 16)
 
-    def get_vendor(self) -> str:
+    def get_vendor(self) -> Optional[str]:
+        """Get vendor name."""
         return self._read_holding_register(5016, "string", 16)
 
-    def get_serial(self) -> str:
+    def get_serial(self) -> Optional[str]:
+        """Get device serial number."""
         return self._read_holding_register(5032, "string", 16)
 
-    def get_model_number(self) -> str:
+    def get_model_number(self) -> Optional[str]:
+        """Get device model number."""
         return self._read_holding_register(5048, "string", 16)
 
     # Firmware
-    def get_firmware_version(self) -> str:
+    def get_firmware_version(self) -> Optional[str]:
         """Get firmware version as string."""
         return self._read_holding_register(5064, "string", 16)
+
+    def close(self) -> None:
+        """Close the Modbus connection."""
+        if self.client and self.client.connected:
+            self.client.close()
+            self._is_connected = False
+            LOGGER.info("Modbus connection closed")
+
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()
+
+    def __del__(self):
+        """Destructor to ensure connection is closed."""
+        try:
+            self.close()
+        except Exception:
+            # Ignore errors during cleanup
+            pass
 
 
 if __name__ == "__main__":
@@ -309,7 +405,9 @@ if __name__ == "__main__":
         print(f"OCPP state: {api.get_OCPP_state()}")
         print(f"Loadshedding state: {api.get_loadshedding_state()}")
         print(f"Lock state: {api.get_lock_state()}")
+        print(f"Is locked: {api.is_locked()}")
         print(f"Contactor state: {api.get_contactor_state()}")
+        print(f"Is charging: {api.is_charging()}")
         print(f"LED color: {api.get_led_color()}")
 
         # Charger Current Measurements
@@ -347,6 +445,10 @@ if __name__ == "__main__":
         print("\n=== Mode3 State ===")
         print(f"Mode3 state (int): {api.get_mode3_state_as_int()}")
         print(f"Mode3 state (string): {api.get_mode3_state()}")
+        print(f"EV connected: {api.is_ev_connected()}")
+        print(f"EV requesting power: {api.is_ev_requesting_power()}")
+        print(f"EVSE offering power: {api.is_evse_offering_power()}")
+        print(f"Cable plugged in: {api.is_cable_plugged_in()}")
 
         # PWM and Control Pilot
         print("\n=== PWM and Control Pilot ===")
@@ -374,3 +476,5 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"Error occurred: {e}")
+    finally:
+        api.close()

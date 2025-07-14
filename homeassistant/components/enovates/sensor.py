@@ -31,7 +31,7 @@ class EnovatesSensorEntityDescription(SensorEntityDescription):
     value_fn: Callable[[ModbusEnoOne], any]
 
 
-SENSOR_TYPES: list[EnovatesSensorEntityDescription] = [
+BASE_SENSOR_TYPES: list[EnovatesSensorEntityDescription] = [
     # TODO: add api version
     EnovatesSensorEntityDescription(
         key="number_of_phases",
@@ -155,8 +155,10 @@ async def async_setup_entry(
     """Set up Enovates sensor platform."""
     entities: list[SensorEntity] = []
     api = config_entry.runtime_data["api"]
+    SENSOR_TYPES = []
+    SENSOR_TYPES.extend(BASE_SENSOR_TYPES)
     if config_entry.data.get("has_loadshedding_device"):
-        SENSOR_TYPES.append(
+        SENSOR_TYPES.extend([
             # Installation current
             EnovatesSensorEntityDescription(
                 key="installation_current_l1",
@@ -167,8 +169,6 @@ async def async_setup_entry(
                 suggested_display_precision=1,
                 value_fn=lambda api: api.get_installation_current_l1(),
             ),
-        )
-        SENSOR_TYPES.append(
             EnovatesSensorEntityDescription(
                 key="installation_current_l2",
                 translation_key="installation_current_l2",
@@ -178,8 +178,6 @@ async def async_setup_entry(
                 suggested_display_precision=1,
                 value_fn=lambda api: api.get_installation_current_l2(),
             ),
-        )
-        SENSOR_TYPES.append(
             EnovatesSensorEntityDescription(
                 key="installation_current_l3",
                 translation_key="installation_current_l3",
@@ -188,7 +186,7 @@ async def async_setup_entry(
                 native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
                 suggested_display_precision=1,
                 value_fn=lambda api: api.get_installation_current_l3(),
-            ),
+            ),]
         )
 
     entities.extend(EnovatesSensor(api, description) for description in SENSOR_TYPES)

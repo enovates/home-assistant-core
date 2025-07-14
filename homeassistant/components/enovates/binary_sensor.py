@@ -26,7 +26,7 @@ class EnovatesBinarySensorEntityDescription(BinarySensorEntityDescription):
     value_fn: Callable[[ModbusEnoOne], bool]
 
 
-SENSOR_TYPES: list[EnovatesBinarySensorEntityDescription] = [
+BASE_SENSOR_TYPES: list[EnovatesBinarySensorEntityDescription] = [
     EnovatesBinarySensorEntityDescription(
         key="charging",
         translation_key="charging",
@@ -72,25 +72,25 @@ async def async_setup_entry(
     """Set up Enovates binary sensor platform."""
 
     entities: list[BinarySensorEntity] = []
+    SENSOR_TYPES = []
+    SENSOR_TYPES.extend(BASE_SENSOR_TYPES)
     api = config_entry.runtime_data["api"]
     if config_entry.data.get("has_lock"):
-        SENSOR_TYPES.append(
+        SENSOR_TYPES.extend([
             EnovatesBinarySensorEntityDescription(
                 key="lock",
                 translation_key="lock",
                 name="cable locked",
                 device_class=BinarySensorDeviceClass.LOCK,
                 value_fn=lambda api: not api.is_locked(),  # this inversion is NOT a mistake.
-            )
-        )
-        SENSOR_TYPES.append(
+            ),
             EnovatesBinarySensorEntityDescription(
                 key="cable_plugged_in",
                 translation_key="cable_plugged_in",
                 name="Cable plugged in",
                 device_class=BinarySensorDeviceClass.PLUG,
                 value_fn=lambda api: api.is_cable_plugged_in(),
-            )
+            )]
         )
     if config_entry.data.get("has_loadshedding_device"):
         # Make these sensors only if there is a loadshedding device
