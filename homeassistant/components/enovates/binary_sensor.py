@@ -76,21 +76,23 @@ async def async_setup_entry(
     SENSOR_TYPES.extend(BASE_SENSOR_TYPES)
     api = config_entry.runtime_data["api"]
     if config_entry.data.get("has_lock"):
-        SENSOR_TYPES.extend([
-            EnovatesBinarySensorEntityDescription(
-                key="lock",
-                translation_key="lock",
-                name="cable locked",
-                device_class=BinarySensorDeviceClass.LOCK,
-                value_fn=lambda api: not api.is_locked(),  # this inversion is NOT a mistake.
-            ),
-            EnovatesBinarySensorEntityDescription(
-                key="cable_plugged_in",
-                translation_key="cable_plugged_in",
-                name="Cable plugged in",
-                device_class=BinarySensorDeviceClass.PLUG,
-                value_fn=lambda api: api.is_cable_plugged_in(),
-            )]
+        SENSOR_TYPES.extend(
+            [
+                EnovatesBinarySensorEntityDescription(
+                    key="lock",
+                    translation_key="lock",
+                    name="cable locked",
+                    device_class=BinarySensorDeviceClass.LOCK,
+                    value_fn=lambda api: not api.is_locked(),  # this inversion is NOT a mistake.
+                ),
+                EnovatesBinarySensorEntityDescription(
+                    key="cable_plugged_in",
+                    translation_key="cable_plugged_in",
+                    name="Cable plugged in",
+                    device_class=BinarySensorDeviceClass.PLUG,
+                    value_fn=lambda api: api.is_cable_plugged_in(),
+                ),
+            ]
         )
     if config_entry.data.get("has_loadshedding_device"):
         # Make these sensors only if there is a loadshedding device

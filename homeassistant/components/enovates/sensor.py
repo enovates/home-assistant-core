@@ -158,35 +158,37 @@ async def async_setup_entry(
     SENSOR_TYPES = []
     SENSOR_TYPES.extend(BASE_SENSOR_TYPES)
     if config_entry.data.get("has_loadshedding_device"):
-        SENSOR_TYPES.extend([
-            # Installation current
-            EnovatesSensorEntityDescription(
-                key="installation_current_l1",
-                translation_key="installation_current_l1",
-                name="Installation current L1",
-                device_class=SensorDeviceClass.CURRENT,
-                native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
-                suggested_display_precision=1,
-                value_fn=lambda api: api.get_installation_current_l1(),
-            ),
-            EnovatesSensorEntityDescription(
-                key="installation_current_l2",
-                translation_key="installation_current_l2",
-                name="Installation current L2",
-                device_class=SensorDeviceClass.CURRENT,
-                native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
-                suggested_display_precision=1,
-                value_fn=lambda api: api.get_installation_current_l2(),
-            ),
-            EnovatesSensorEntityDescription(
-                key="installation_current_l3",
-                translation_key="installation_current_l3",
-                name="Installation current L3",
-                device_class=SensorDeviceClass.CURRENT,
-                native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
-                suggested_display_precision=1,
-                value_fn=lambda api: api.get_installation_current_l3(),
-            ),]
+        SENSOR_TYPES.extend(
+            [
+                # Installation current
+                EnovatesSensorEntityDescription(
+                    key="installation_current_l1",
+                    translation_key="installation_current_l1",
+                    name="Installation current L1",
+                    device_class=SensorDeviceClass.CURRENT,
+                    native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
+                    suggested_display_precision=1,
+                    value_fn=lambda api: api.get_installation_current_l1(),
+                ),
+                EnovatesSensorEntityDescription(
+                    key="installation_current_l2",
+                    translation_key="installation_current_l2",
+                    name="Installation current L2",
+                    device_class=SensorDeviceClass.CURRENT,
+                    native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
+                    suggested_display_precision=1,
+                    value_fn=lambda api: api.get_installation_current_l2(),
+                ),
+                EnovatesSensorEntityDescription(
+                    key="installation_current_l3",
+                    translation_key="installation_current_l3",
+                    name="Installation current L3",
+                    device_class=SensorDeviceClass.CURRENT,
+                    native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
+                    suggested_display_precision=1,
+                    value_fn=lambda api: api.get_installation_current_l3(),
+                ),
+            ]
         )
 
     entities.extend(EnovatesSensor(api, description) for description in SENSOR_TYPES)
