@@ -78,8 +78,14 @@ class ModbusEnoOne:
     def _ensure_connected(self) -> None:
         """Ensure we have a valid connection, reconnect if necessary."""
         if not self._is_connected or not self.client or not self.client.connected:
-            LOGGER.warning("Modbus connection lost, attempting to reconnect...")
+            LOGGER.debug("Modbus connection lost, attempting to reconnect...")
             self._connect()
+
+    def _write_holding_register(self, address: int, value: int):
+        LOGGER.warn(f"777777 --- attempting to write {value} to {address}")
+        self._ensure_connected()
+        self.client.write_register(address, value)
+        LOGGER.warn("777777777 done writing")
 
     def _read_holding_register(
         self, address: int, data_type: str = "uint16", count: int = 1
@@ -337,6 +343,10 @@ class ModbusEnoOne:
     def get_ems_applied_softlimit(self) -> int | None:
         """Get EMS applied softlimit in A."""
         return self._read_holding_register(400, "int16")
+
+    def set_ems_applied_softlimit(self, value: int) -> None:
+        LOGGER.warning("7777777777 ---- writing ems limit")
+        self._write_holding_register(400, value)
 
     # Token
     def get_last_token(self) -> str | None:

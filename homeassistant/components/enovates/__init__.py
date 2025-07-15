@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .modbusenoone import ModbusEnoOne
 
-PLATFORMS: list[str] = ["binary_sensor", "sensor"]
+PLATFORMS: list[str] = ["binary_sensor", "sensor", "number"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
