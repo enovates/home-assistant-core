@@ -144,6 +144,50 @@ BASE_SENSOR_TYPES: list[EnovatesSensorEntityDescription] = [
         suggested_display_precision=1,
         value_fn=lambda api: api.get_charger_active_power_total(),
     ),
+    EnovatesSensorEntityDescription(
+        key="charger_pwm",
+        translation_key="charger_pwm",
+        name="Charger PWM",
+        device_class=None,
+        native_unit_of_measurement=None,
+        suggested_display_precision=1,
+        value_fn=lambda api: api.get_charger_pwm(),
+    ),
+    EnovatesSensorEntityDescription(
+        key="charger_pwm_as_amp",
+        translation_key="charger_pwm_as_amp",
+        name="Charger PWM as current",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.MILLIAMPERE,
+        suggested_display_precision=1,
+        value_fn=lambda api: api.get_charger_pwm_as_amp(),
+    ),
+    EnovatesSensorEntityDescription(
+        key="charger_cp_plus",
+        translation_key="charger_cp_plus",
+        name="Charger CP+",
+        device_class=None,
+        native_unit_of_measurement=None,
+        suggested_display_precision=1,
+        value_fn=lambda api: api.get_cp_plus(),
+    ),
+    EnovatesSensorEntityDescription(
+        key="charger_cp_min",
+        translation_key="charger_cp_min",
+        name="Charger CP-",
+        device_class=None,
+        native_unit_of_measurement=None,
+        suggested_display_precision=1,
+        value_fn=lambda api: api.get_cp_min(),
+    ),
+    EnovatesSensorEntityDescription(
+        key="mode_3_state",
+        translation_key="mode_3_state",
+        name="Mode3 state",
+        device_class=None,
+        native_unit_of_measurement=None,
+        value_fn=lambda api: api.get_mode3_state(),
+    ),
 ]
 
 
@@ -189,6 +233,33 @@ async def async_setup_entry(
                     value_fn=lambda api: api.get_installation_current_l3(),
                 ),
             ]
+        )
+
+    if config_entry.data.get("has_lock"):
+        SENSOR_TYPES.append(
+            # Installation current
+            EnovatesSensorEntityDescription(
+                key="charger_pp",
+                translation_key="charger_pp",
+                name="Charger PP",
+                device_class=None,
+                native_unit_of_measurement=None,
+                suggested_display_precision=1,
+                value_fn=lambda api: api.get_pp(),
+            )
+        )
+
+    if config_entry.data.get("has_ems_enabled"):
+        SENSOR_TYPES.append(
+            # Installation current
+            EnovatesSensorEntityDescription(
+                key="charger_last_token",
+                translation_key="charger_last_token",
+                name="Last scanned token",
+                device_class=None,
+                native_unit_of_measurement=None,
+                value_fn=lambda api: api.get_last_token() or "(none)",
+            )
         )
 
     entities.extend(EnovatesSensor(api, description) for description in SENSOR_TYPES)

@@ -106,6 +106,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             final_data = {
                 **self._validated_input,
                 "has_loadshedding_device": user_input["has_loadshedding_device"],
+                "has_ems_enabled": True,  # TODO make this variable
             }
 
             # Get the title, with a fallback if device_serial is not available
