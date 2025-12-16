@@ -10,10 +10,11 @@ from aiomealie import (
     MealieValidationError,
     MealplanEntryType,
 )
+from awesomeversion import AwesomeVersion
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import ATTR_DATE
+from homeassistant.const import ATTR_CONFIG_ENTRY_ID, ATTR_DATE
 from homeassistant.core import (
     HomeAssistant,
     ServiceCall,
@@ -25,13 +26,14 @@ from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
 
 from .const import (
-    ATTR_CONFIG_ENTRY_ID,
     ATTR_END_DATE,
     ATTR_ENTRY_TYPE,
     ATTR_INCLUDE_TAGS,
     ATTR_NOTE_TEXT,
     ATTR_NOTE_TITLE,
     ATTR_RECIPE_ID,
+    ATTR_RESULT_LIMIT,
+    ATTR_SEARCH_TERMS,
     ATTR_START_DATE,
     ATTR_URL,
     DOMAIN,
@@ -52,6 +54,15 @@ SERVICE_GET_RECIPE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_CONFIG_ENTRY_ID): str,
         vol.Required(ATTR_RECIPE_ID): str,
+    }
+)
+
+SERVICE_GET_RECIPES = "get_recipes"
+SERVICE_GET_RECIPES_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_CONFIG_ENTRY_ID): str,
+        vol.Optional(ATTR_SEARCH_TERMS): str,
+        vol.Optional(ATTR_RESULT_LIMIT): int,
     }
 )
 
@@ -117,6 +128,27 @@ def _async_get_entry(call: ServiceCall) -> MealieConfigEntry:
     return cast(MealieConfigEntry, entry)
 
 
+def _validate_mealplan_type(version: AwesomeVersion, entry_type: str) -> None:
+    """Validate mealplan entry type, if prior to 3.7.0."""
+
+    if (
+        version.valid
+        and version < AwesomeVersion("v3.7.0")
+        and entry_type
+        not in {
+            MealplanEntryType.BREAKFAST.value,
+            MealplanEntryType.DINNER.value,
+            MealplanEntryType.LUNCH.value,
+            MealplanEntryType.SIDE.value,
+        }
+    ):
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_mealplan_entry_type",
+            translation_placeholders={"mealplan_type": entry_type},
+        )
+
+
 async def _async_get_mealplan(call: ServiceCall) -> ServiceResponse:
     """Get the mealplan for a specific range."""
     entry = _async_get_entry(call)
@@ -159,6 +191,27 @@ async def _async_get_recipe(call: ServiceCall) -> ServiceResponse:
     return {"recipe": asdict(recipe)}
 
 
+async def _async_get_recipes(call: ServiceCall) -> ServiceResponse:
+    """Get recipes."""
+    entry = _async_get_entry(call)
+    search_terms = call.data.get(ATTR_SEARCH_TERMS)
+    result_limit = call.data.get(ATTR_RESULT_LIMIT, 10)
+    client = entry.runtime_data.client
+    try:
+        recipes = await client.get_recipes(search=search_terms, per_page=result_limit)
+    except MealieConnectionError as err:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="connection_error",
+        ) from err
+    except MealieNotFoundError as err:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="no_recipes_found",
+        ) from err
+    return {"recipes": asdict(recipes)}
+
+
 async def _async_import_recipe(call: ServiceCall) -> ServiceResponse:
     """Import a recipe."""
     entry = _async_get_entry(call)
@@ -188,6 +241,9 @@ async def _async_set_random_mealplan(call: ServiceCall) -> ServiceResponse:
     mealplan_date = call.data[ATTR_DATE]
     entry_type = MealplanEntryType(call.data[ATTR_ENTRY_TYPE])
     client = entry.runtime_data.client
+
+    _validate_mealplan_type(entry.runtime_data.version, entry_type.value)
+
     try:
         mealplan = await client.random_mealplan(mealplan_date, entry_type)
     except MealieConnectionError as err:
@@ -206,6 +262,9 @@ async def _async_set_mealplan(call: ServiceCall) -> ServiceResponse:
     mealplan_date = call.data[ATTR_DATE]
     entry_type = MealplanEntryType(call.data[ATTR_ENTRY_TYPE])
     client = entry.runtime_data.client
+
+    _validate_mealplan_type(entry.runtime_data.version, entry_type.value)
+
     try:
         mealplan = await client.set_mealplan(
             mealplan_date,
@@ -240,6 +299,13 @@ def async_setup_services(hass: HomeAssistant) -> None:
         SERVICE_GET_RECIPE,
         _async_get_recipe,
         schema=SERVICE_GET_RECIPE_SCHEMA,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_RECIPES,
+        _async_get_recipes,
+        schema=SERVICE_GET_RECIPES_SCHEMA,
         supports_response=SupportsResponse.ONLY,
     )
     hass.services.async_register(
